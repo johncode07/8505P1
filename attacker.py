@@ -26,6 +26,7 @@ def _get_available_actions():
     else:
         actions.append('k+')
     
+    actions.append('un')
     actions.append('ex')
     return actions
 
@@ -61,6 +62,7 @@ def run_menu():
 def main():
     print('hello from server')
     run_menu()
+    # show_interfaces()
 
 
 if __name__ == "__main__":

