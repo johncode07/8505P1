@@ -1,1 +1,8 @@
 .venv/
+data/attacker/*
+data/keylog/*
+data/victim/*
+data/watched/*
+
+*.pyc
+/test

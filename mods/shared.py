@@ -1,6 +1,18 @@
+from enum import Enum
+
 VICTIM_IP = '127.0.0.1'
 ATTACKER_IP = '127.0.0.2'
 INTERFACE = 'lo'
+
+CHANNELS = {
+    1: { 'sport': 7001, 'dport': 8001 },
+    2: { 'sport': 7002, 'dport': 8002 },
+    3: { 'sport': 7003, 'dport': 8003 }
+}
+
+class Channel(Enum):
+    MAIN = 1
+    BACKGROUND = 2
 
 OPTIONS_LIST = {
     'cn': '\t\tConnect to the victim ',
