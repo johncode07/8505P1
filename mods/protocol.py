@@ -5,7 +5,7 @@ import threading
 from scapy.all import *
 from scapy.layers.inet import IP, TCP
 
-from mods.shared import Channel, INTERFACE, CHANNELS
+from mods.shared import Channel, CHANNELS, Cfg
 
 class CustomPacket:
     sport: int
@@ -92,7 +92,8 @@ def send_data(payload: bytes, src: str, dst: str, channel: Channel = Channel.MAI
     p = build_final_packet(src, dst, channel=channel)
     send(p, verbose=False)
 
-def receive_packet(from_ip: str, iface: str = INTERFACE, channel: Channel = Channel.MAIN, timeout=10) -> CustomPacket:
+def receive_packet(from_ip: str, iface: str = None, channel: Channel = Channel.MAIN, timeout=10) -> CustomPacket:
+    if iface == None: iface = Cfg.IFACE
     sport, dport = _get_channel_ports(channel)
     custom_packet: CustomPacket = None
     def should_stop(_: Packet):
@@ -108,7 +109,9 @@ def receive_packet(from_ip: str, iface: str = INTERFACE, channel: Channel = Chan
     return custom_packet
 
 
-def receive_data(from_ip: str, iface: str = INTERFACE, channel: Channel = Channel.MAIN, timeout=10) -> bytes:
+def receive_data(from_ip: str, iface: str = None, channel: Channel = Channel.MAIN, timeout=10) -> bytes:
+    if iface == None: iface = Cfg.IFACE
+
     sport, dport = _get_channel_ports(channel)
     output: bytes = b''
 
@@ -129,7 +132,9 @@ def receive_data(from_ip: str, iface: str = INTERFACE, channel: Channel = Channe
 
 
 def receive_data_stream(from_ip: str, on_message, stop_event: threading.Event,
-                        iface: str = INTERFACE, channel: Channel = Channel.BACKGROUND):
+                        iface: str = None, channel: Channel = Channel.BACKGROUND):
+    if iface == None: iface = Cfg.IFACE
+
     sport, dport = _get_channel_ports(channel)
     current: list[bytes] = []
 

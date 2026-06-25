@@ -4,7 +4,7 @@ import time
 from scapy.all import *
 from scapy.layers.inet import IP, UDP
 
-from mods.shared import INTERFACE
+from mods.shared import Cfg
 
 knocks_fsm = {3000: 4000, 4000: 5000, 5000: 6000, 6000: 'win'}
 
@@ -46,7 +46,9 @@ def knock_knock(host: str, port: int) -> bool:
     knocks_tracker[host] = next_port
     return False
 
-def wait_for_knock(iface = INTERFACE) -> bool:
+def wait_for_knock(iface = None) -> bool:
+    if iface == None: iface = Cfg.IFACE
+
     src: str = ''
     def should_stop(_: Packet) -> bool:
         time.sleep(1)

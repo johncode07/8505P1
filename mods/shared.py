@@ -3,9 +3,10 @@ import socket
 from enum import Enum
 from psutil import net_if_addrs
 
-VICTIM_IP = '192.168.0.40'
-ATTACKER_IP = '192.168.0.143'
-INTERFACE = 'en0'
+class Cfg:
+    VICTIM_IP = '192.168.0.40'
+    ATTACKER_IP = '192.168.0.143'
+    IFACE = 'enp2s0'
 
 CHANNELS = {
     1: { 'sport': 7001, 'dport': 8001 },
@@ -32,16 +33,13 @@ OPTIONS_LIST = {
 }
 
 def set_victimip(ip: str):
-    global VICTIM_IP
-    VICTIM_IP = ip
+    Cfg.VICTIM_IP = ip
 
 def set_attackerip(ip: str):
-    global ATTACKER_IP
-    ATTACKER_IP = ip
+    Cfg.ATTACKER_IP = ip
 
 def set_interface(iface: str):
-    global INTERFACE
-    INTERFACE = iface
+    Cfg.IFACE = iface
 
 
 def get_ip_address(ifname) -> str:
