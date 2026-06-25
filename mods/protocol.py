@@ -7,6 +7,8 @@ from scapy.layers.inet import IP, TCP
 
 from mods.shared import Channel, CHANNELS, Cfg
 
+conf.netcache.arp_cache.timeout = 3600
+
 class CustomPacket:
     sport: int
 
