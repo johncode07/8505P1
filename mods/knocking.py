@@ -59,13 +59,12 @@ def wait_for_knock(iface = INTERFACE) -> bool:
         if knock_knock(src, port):
             flags['knocking_success'] = True
 
-
         # if knock_knock(src, port):
         #     print('Port knocking success!')
         # else:
         #     print(f"Port knocking attempt: {src}:{port}")
 
-    sniff(filter='udp and (port 3000 or port 4000 or port 5000 or port 6000) and inbound', 
+    sniff(filter='udp and (port 3000 or port 4000 or port 5000 or port 6000)', 
           prn=process_packet, stop_filter=should_stop, iface=iface, store=False)
     
     return src

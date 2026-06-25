@@ -102,7 +102,7 @@ def receive_packet(from_ip: str, iface: str = INTERFACE, channel: Channel = Chan
         nonlocal custom_packet
         custom_packet = parse_packet(packet)
 
-    sniff(filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip} and inbound',
+    sniff(filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip}',
           prn=process_packet, iface=iface, store=False, stop_filter=should_stop, timeout=timeout)
 
     return custom_packet
@@ -122,7 +122,7 @@ def receive_data(from_ip: str, iface: str = INTERFACE, channel: Channel = Channe
         if not parsed.is_final and not parsed.is_ack:
             output += parsed.data
 
-    sniff(filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip} and inbound',
+    sniff(filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip}',
           prn=process_packet, iface=iface, store=False, stop_filter=should_stop, timeout=timeout)
 
     return output
@@ -143,7 +143,7 @@ def receive_data_stream(from_ip: str, on_message, stop_event: threading.Event,
             current.append(parsed.data)
 
     sniffer = AsyncSniffer(
-        filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip} and inbound',
+        filter=f'tcp and src port {sport} and dst port {dport} and src host {from_ip}',
         prn=process,
         iface=iface,
         store=False,

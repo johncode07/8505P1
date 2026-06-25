@@ -1,8 +1,11 @@
-from enum import Enum
+import socket
 
-VICTIM_IP = '127.0.0.1'
-ATTACKER_IP = '127.0.0.2'
-INTERFACE = 'lo'
+from enum import Enum
+from psutil import net_if_addrs
+
+VICTIM_IP = '192.168.0.40'
+ATTACKER_IP = '192.168.0.143'
+INTERFACE = 'en0'
 
 CHANNELS = {
     1: { 'sport': 7001, 'dport': 8001 },
@@ -27,3 +30,26 @@ OPTIONS_LIST = {
     'un': '\t\tUninstall',
     'ex': '\t\tExit'
 }
+
+def set_victimip(ip: str):
+    global VICTIM_IP
+    VICTIM_IP = ip
+
+def set_attackerip(ip: str):
+    global ATTACKER_IP
+    ATTACKER_IP = ip
+
+def set_interface(iface: str):
+    global INTERFACE
+    INTERFACE = iface
+
+
+def get_ip_address(ifname) -> str:
+    interfaces = net_if_addrs()
+    if ifname not in interfaces: return None
+    
+    for address in interfaces[ifname]:
+        if address.family == socket.AF_INET:
+            return address.address
+            
+    return None

