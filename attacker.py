@@ -71,6 +71,9 @@ def main():
     Cfg.ATTACKER_IP = my_ip
     Cfg.VICTIM_IP = args.ip
 
+    conf.iface = args.iface
+    conf.netcache.arp_cache.timeout = 3600
+
     print('config: ' + ', '.join('%s: %s' % item for item in vars(Cfg).items() if not item[0].startswith('__')))
 
     run_menu()
