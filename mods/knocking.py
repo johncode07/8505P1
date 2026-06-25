@@ -18,13 +18,13 @@ def send_port_knocks(dst: str = '127.0.0.1'):
     
     print(f'knocking on {dst}:3000')
     sock.sendto(bytes(message, "utf-8"), (dst, 3000))
-    time.sleep(1)
+    time.sleep(0.5)
     print(f'knocking on {dst}:4000')
     sock.sendto(bytes(message, "utf-8"), (dst, 4000))
-    time.sleep(1)
+    time.sleep(0.5)
     print(f'knocking on {dst}:5000')
     sock.sendto(bytes(message, "utf-8"), (dst, 5000))
-    time.sleep(1)
+    time.sleep(0.5)
     print(f'knocking on {dst}:6000')
     sock.sendto(bytes(message, "utf-8"), (dst, 6000))
 

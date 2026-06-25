@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# README.md
 
 ## Project Overview
 
@@ -32,25 +30,17 @@ Storage for other transferred files is located under `data/victim/` and `data/at
 
 ## Network Configuration
 
-IPs and the network interface are set in `mods/shared.py`:
-- `ATTACKER_IP = '127.0.0.2'`
-- `VICTIM_IP = '127.0.0.1'`
-- `INTERFACE = 'lo'`
-
-The loopback alias `127.0.0.2` must exist. Add it if needed:
-```bash
-sudo ip addr add 127.0.0.2/8 dev lo
-```
+IPs and the network interface are set passed in as command line arguments and set in `mods/shared.py`.
 
 ## Architecture
 
 ### Covert Protocol (`mods/protocol.py`)
 
 Data is carried inside standard TCP header fields — no payload is used:
-- **Data** (up to 4 bytes per packet) → packed into the TCP `seq` field
-- **Data length** → carried in the TCP `ack` field
-- **End of stream** → signaled by a TCP FIN packet (`flags='F'`)
-- **Acknowledgement** → TCP ACK packet (`flags='A'`)
+- **Data** (up to 4 bytes per packet) packed into the TCP `seq` field
+- **Data length** carried in the TCP `ack` field
+- **End of stream** signaled by a TCP FIN packet (`flags='F'`)
+- **Acknowledgement** ßTCP ACK packet (`flags='A'`)
 
 Port convention: `sport=7001`, `dport=8001` for main channel. Secondary channels (e.g., file watch) use `7002`/`8002` to avoid collisions.
 
@@ -85,13 +75,6 @@ Session initiation uses UDP port knocking in sequence: **3000 → 4000 → 5000 
 ### Command Codes
 
 Defined in `mods/shared.py` `OPTIONS_LIST`: `cn`, `dc`, `sf`, `dl`, `k+`, `k-`, `wf`, `wd`, `rn`, `un`, `ex`.
-
-## Incomplete Features (TODOs)
-
-- `mods/keylogger.py` — `start_keylogger()` and `stop_keylogger()` are stubs
-- `victim.py` `handle_command()` — `wf` and `wd` (file/dir watch) not implemented
-- `mods/handlers.py` — `handle_wf`, `handle_wd`, `handle_dc`, `handle_un` not implemented
-- `victim.py` main loop — command parsing is commented out; currently only prints received data
 
 ## Guidelines
 
