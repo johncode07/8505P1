@@ -47,6 +47,7 @@ def knock_knock(host: str, port: int) -> bool:
     return False
 
 def wait_for_knock(iface = None) -> bool:
+    flags['knocking_success'] = False
     if iface == None: iface = Cfg.IFACE
 
     src: str = ''
