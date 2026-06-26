@@ -117,10 +117,6 @@ def handle_wf(args: list[str], state: dict) -> str:
     if not args:
         return 'Missing path argument'
     path = args[0]
-
-    if path.startswith('/etc'):
-        print('Unable to watch files inside /etc directory, watching entire /etc directory instead...')
-        handle_wd(['/etc'], state)
     
     watch_dir = Path(f'data/watched/wf_{datetime.now().strftime("%H_%M_%Y_%m_%d")}')
     stop_event = threading.Event()
